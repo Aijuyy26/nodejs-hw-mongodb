@@ -22,6 +22,7 @@ export const getContactsController = async (req, res) => {
     sortBy,
     sortOrder,
     filter,
+    userId: req.user._id,
   });
 
   res.status(200).json({
@@ -33,7 +34,7 @@ export const getContactsController = async (req, res) => {
 
 export const getContactByIdController = async (req, res) => {
   const { contactId } = req.params;
-  const contact = await getContactById(contactId);
+  const contact = await getContactById(contactId, req.user._id);
 
   if (!contact) {
     throw createHttpError(404, 'Contact not found');
@@ -47,7 +48,11 @@ export const getContactByIdController = async (req, res) => {
 };
 
 export const createContactController = async (req, res) => {
-  const contact = await createContact(req.body);
+  const contactData = {
+    ...req.body,
+    userId: req.user._id,
+  };
+  const contact = await createContact(contactData);
 
   res.status(201).json({
     status: 201,
@@ -56,28 +61,28 @@ export const createContactController = async (req, res) => {
   });
 };
 
-export const deleteContactController = async (req, res, next) => {
+export const deleteContactController = async (req, res) => {
   const { contactId } = req.params;
 
-  const deletedContact = await deleteContact(contactId);
-    if (!deletedContact) {
-      next(createHttpError(404, 'Contact not found'));
-    }
-    res.status(204).end();
+  const contact = await deleteContact(contactId, req.user._id);
 
-};
-
-export const patchContactController = async (req, res, next) => {
-  const { contactId } = req.params;
-
-  const result = await updateContact(contactId, req.body);
-
-  if (!result) {
-    next(createHttpError(404, 'Contact not found'));
-    return;
+  if (!contact) {
+    throw createHttpError(404, 'Contact not found');
   }
 
-  return res.json({
+  res.status(204).send();
+};
+
+export const patchContactController = async (req, res) => {
+  const { contactId } = req.params;
+
+  const result = await updateContact(contactId, req.body, req.user._id);
+
+  if (!result) {
+    throw createHttpError(404, 'Contact not found');
+  }
+
+  res.json({
     status: 200,
     message: 'Successfully patched a contact!',
     data: result.contact,
